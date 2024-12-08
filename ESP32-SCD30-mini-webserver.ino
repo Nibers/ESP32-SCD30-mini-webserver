@@ -62,6 +62,38 @@ void tryConnectWifi() {
     server.begin();
 }
 
+// Read sensor data
+void readSensor() {
+    if (scd30.dataReady()) {
+        if (!scd30.read()) {
+            Serial.println("Error reading sensor data.");
+            return;
+        }
+        co2 = scd30.CO2;
+        humidity = scd30.relative_humidity;
+        temperature = scd30.temperature;
+    }
+}
+
+// Print sensor data to Serial Monitor
+void printSensorToSerial() {
+    Serial.printf("CO2: %.2f ppm, Temperature: %.2f °C, Humidity: %.2f%%\n", co2, temperature, humidity);
+}
+
+// Store sensor data in arrays
+void takeSample() {
+    if (stampsTaken < 1440) {
+        stampsCO2[stampsTaken] = co2;
+        stampsTemperature[stampsTaken] = temperature;
+        stampsHumidity[stampsTaken] = humidity;
+        stampsTaken++;
+        Serial.println("Sample stored.");
+    } else {
+        Serial.println("Memory full. Resetting samples.");
+        stampsTaken = 0;
+    }
+}
+
 void loop() {
     unsigned long currentMillis = millis();
 
@@ -138,22 +170,36 @@ void serverLoop() {
                         client.print(stampsTaken);
                         client.println("</p>");
 
-                        client.println("<div><canvas id=\"line-chart\"></canvas></div>");
-                        client.println("<script>const data = [" + arrayToString(stampsCO2) + "];");
+                        client.println("<button onclick=\"dlCSV()\">CSV</button> <button onclick=\"dlJSON()\">JSON</button>");
+
+                        client.println("<div style=\"width: 100%; margin: 0 auto;\"><canvas id=\"line-chart\"></canvas></div>");
+                        
+                        client.println("<script>function dlCSV(){console.log('CSV Download started');const csvContent='Time;CO2 (ppm);Temperature (°C);Humidity (%)\\n'+");
+                        client.println("data.map((d,i)=>`${i};${d.toLocaleString()};${tdata[i].toLocaleString()};${hdata[i].toLocaleString()}`).join('\\n');");
+                        client.println("const link=document.createElement('a');link.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csvContent);link.download='data.csv';");
+                        client.println("link.click();}function dlJSON(){console.log('JSON Download started');const jsonData={time:Array.from({length:data.length},(_,i)=>i),co2:data,temperature:tdata,humidity:hdata};");
+                        client.println("const jsonString=JSON.stringify(jsonData);const link=document.createElement('a');link.href='data:application/json;charset=utf-8,'+encodeURIComponent(jsonString);link.download='data.json';link.click();}");
+
+                        client.println("const data = [" + arrayToString(stampsCO2) + "];");
                         client.println("const tdata = [" + arrayToString(stampsTemperature) + "];");
                         client.println("const hdata = [" + arrayToString(stampsHumidity) + "];");
-
-                        client.println("const ctx = document.getElementById('line-chart').getContext('2d');");
-                        client.println("new Chart(ctx, {");
-                        client.println("type: 'line',");
-                        client.println("data: {");
-                        client.println("labels: Array.from({length: data.length}, (_, i) => new Date(Date.now() - i * 60000).toLocaleTimeString()),");
-                        client.println("datasets: [");
-                        client.println("{label: 'CO2 (ppm)', data: data, borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 2, fill: false},");
-                        client.println("{label: 'Temperature (°C)', data: tdata, borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 2, fill: false},");
-                        client.println("{label: 'Humidity (%)', data: hdata, borderColor: 'rgba(153, 102, 255, 1)', borderWidth: 2, fill: false}");
-                        client.println("]}, options: {responsive: true}});");
-                        client.println("</script></body></html>");
+                        
+                        client.println("const data_smooth=new Array(data.length);");
+                        client.println("const smoothFactor=5;");
+                        client.println("data.forEach((element,index)=>{const startIndex=Math.max(0,index-smoothFactor+1);");
+                        client.println("const endIndex=index+1;const subArray=data.slice(startIndex,endIndex);const average=subArray.reduce((acc,val)=>acc+val,0)/subArray.length;data_smooth[index]=average});");
+                        client.println("const now=new Date();const timestamps=[];");
+                        client.println("for(let i=data.length-1;i>=0;i--){const time=new Date(now-i*60*1000);const formattedTime=time.toLocaleTimeString();");
+                        client.println("timestamps.push(formattedTime)}const ctx=document.getElementById('line-chart').getContext('2d');");
+                        client.println("const lineChart=new Chart(ctx,{type:'line',data:{labels:timestamps,datasets:[{label:'CO2 - 5-Minuten Mittel',");
+                        client.println("data:data_smooth,borderColor:'rgba(75, 192, 192, 1)',borderWidth:2,fill:false,yAxisID:'y1'},");
+                        client.println("{label:'CO2',data:data,borderColor:'rgba(192, 192, 70, .4)',borderWidth:2,fill:false,yAxisID:'y1'},");
+                        client.println("{label:'Temperatur (°C)',data:tdata,borderColor:'rgba(255, 99, 132, 1)',borderWidth:2,fill:false,yAxisID:'y2'},");
+                        client.println("{label:'Luftfeuchtigkeit (%)',data:hdata,borderColor:'rgba(153, 102, 255, 1)',borderWidth:2,fill:false,yAxisID:'y3'}]},");
+                        client.println("options:{responsive:true,scales:{x:{display:true,scaleLabel:{display:true,labelString:'Time'}},y:{id:'y1',type:'linear',position:'left',");
+                        client.println("scaleLabel:{display:true,labelString:'CO2 (ppm)'}},y2:{id:'y2',type:'linear',position:'right',scaleLabel:{display:true,");
+                        client.println("labelString:'Temperatur (°C)'}},y3:{id:'y3',type:'linear',position:'right',scaleLabel:{display:true,labelString:'Luftfeuchtigkeit (%)'}}}}});</script>");
+                        
 
                         client.println();
                         break;
@@ -168,37 +214,5 @@ void serverLoop() {
         header = "";
         client.stop();
         Serial.println("Client disconnected.");
-    }
-}
-
-// Read sensor data
-void readSensor() {
-    if (scd30.dataReady()) {
-        if (!scd30.read()) {
-            Serial.println("Error reading sensor data.");
-            return;
-        }
-        co2 = scd30.CO2;
-        humidity = scd30.relative_humidity;
-        temperature = scd30.temperature;
-    }
-}
-
-// Print sensor data to Serial Monitor
-void printSensorToSerial() {
-    Serial.printf("CO2: %.2f ppm, Temperature: %.2f °C, Humidity: %.2f%%\n", co2, temperature, humidity);
-}
-
-// Store sensor data in arrays
-void takeSample() {
-    if (stampsTaken < 1440) {
-        stampsCO2[stampsTaken] = co2;
-        stampsTemperature[stampsTaken] = temperature;
-        stampsHumidity[stampsTaken] = humidity;
-        stampsTaken++;
-        Serial.println("Sample stored.");
-    } else {
-        Serial.println("Memory full. Resetting samples.");
-        stampsTaken = 0;
     }
 }
