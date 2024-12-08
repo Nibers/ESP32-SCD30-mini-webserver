@@ -3,8 +3,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+#include "config.h"
 
 WiFiServer server(80);
 String header;

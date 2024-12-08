@@ -1,6 +1,8 @@
 # ESP32 CO₂, Temperature, and Humidity Web Server
 
-This project is an ESP32-based web server that reads CO₂, temperature, and humidity data from an SCD30 sensor. The data is stored and visualized using **Chart.js** in a web interface. The server provides real-time data along with plots for the last 24 hours.
+This project is an ESP32-based web server that reads CO₂, temperature, and humidity data from an SCD30 sensor. The data is stored and visualized using **Chart.js** in a web interface. The server provides current data with plots for the last 24 hours.
+
+All of required code is in one file `ESP32-SCD30-mini-webserver.ino` , making the project very easy to set up.
 
 ## Features
 
@@ -30,13 +32,17 @@ This project is an ESP32-based web server that reads CO₂, temperature, and hum
    - `Adafruit SCD30 Library`
    - `WiFi` (comes pre-installed for ESP32)
 
-4. Update the Wi-Fi credentials in the code:
+4. Update the Wi-Fi credentials in the `config.h` code:
    ```cpp
    const char* ssid = "YOUR_WIFI_SSID";
    const char* password = "YOUR_WIFI_PASSWORD";
    ```
 
 5. Upload the code to your ESP32 board.
+
+6. (Optional) If you get an error because the file `config.h`could not be found:
+    - Go to `Sketch > Add File....`
+    - Add the file `config.h`
 
 ## How It Works
 
@@ -52,6 +58,8 @@ This project is an ESP32-based web server that reads CO₂, temperature, and hum
    ```
    http://<ESP32_IP_ADDRESS>
    ```
+
+   The local address that the ESP32 uses it beeing logged in the serial monitor
 
 ## Example Output
 
