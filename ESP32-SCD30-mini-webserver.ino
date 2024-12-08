@@ -2,6 +2,8 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #include "config.h"
 
@@ -12,6 +14,12 @@ String header;
 unsigned long currentTime = millis();
 unsigned long previousTime = 0;
 const long timeoutTime = 2000;
+
+// OLED Display
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Sensor instance
 Adafruit_SCD30 scd30;
@@ -32,7 +40,15 @@ unsigned long lastSampleTime = 0;
 
 void setup() {
     Serial.begin(115200);
-    delay(2000);
+    delay(1000);
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+      Serial.println(F("SSD1306 not found. Please comment out if you do not have a Display attatched."));
+      for(;;);
+    }
+
+    display.display();
+    delay(1000);
 
     if (!scd30.begin()) {
         Serial.println("SCD30 sensor not found!");
@@ -47,6 +63,22 @@ void setup() {
     Serial.print("Measurement interval: ");
     Serial.print(scd30.getMeasurementInterval());
     Serial.println(" seconds");
+}
+
+void drawToDisplay() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.print("Temp: "); display.println(scd30.temperature);
+  display.print("Humi: "); display.println(scd30.relative_humidity);
+  display.print("Humi: "); display.println(scd30.CO2);
+  if (WiFi.status() == WL_CONNECTED) {
+    display.println("");
+    display.println(WiFi.SSID());
+    display.print("http://"); display.println(WiFi.localIP());
+  }
+  display.display();
 }
 
 void tryConnectWifi() {
@@ -102,6 +134,7 @@ void loop() {
         lastLoopTime = currentMillis;
         readSensor();
         printSensorToSerial();
+        drawToDisplay();
         if (WiFi.status() != WL_CONNECTED) {
             tryConnectWifi();
         }
@@ -149,7 +182,7 @@ void serverLoop() {
 
                         // Serve HTML content
                         client.println("<!DOCTYPE html><html>");
-                        client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+                        client.println("<head><meta charset=\"utf-8\" name=\"ESP32 SCD30\" content=\"width=device-width, initial-scale=1\">");
                         client.println("<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>");
                         client.println("<style>html { font-family: Helvetica; text-align: center; }</style></head>");
                         client.println("<body><h1>ESP32 - SCD30 Data (last 24h)</h1>");

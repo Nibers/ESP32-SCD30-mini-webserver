@@ -4,6 +4,11 @@ This project is an ESP32-based web server that reads CO₂, temperature, and hum
 
 All of required code is in one file `ESP32-SCD30-mini-webserver.ino` , making the project very easy to set up.
 
+<p float="left">
+  <img src="./screenshot.png" width="40%" />
+  <img src="./picture-of-sensor.jpg" width="40%" />
+</p>
+
 ## Features
 
 - **Real-time Monitoring**: CO₂ concentration, temperature, and humidity displayed live.
@@ -14,6 +19,7 @@ All of required code is in one file `ESP32-SCD30-mini-webserver.ino` , making th
 
 - **ESP32** microcontroller
 - **SCD30** CO₂ sensor (supports temperature and humidity measurements)
+- **ssd1306** OLED Display (optional) - you need to comment the corresponding lines out if you dont connect a display.
 
 ## Software Requirements
 
