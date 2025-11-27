@@ -1,9 +1,10 @@
 #include <Adafruit_SCD30.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ESP8266HTTPClient.h>
 
 #include "config.h"
 
@@ -72,7 +73,8 @@ void drawToDisplay() {
   display.setCursor(0, 0);
   display.print("Temp: "); display.println(scd30.temperature);
   display.print("Humi: "); display.println(scd30.relative_humidity);
-  display.print("Humi: "); display.println(scd30.CO2);
+  display.print("CO2: "); display.println(scd30.CO2);
+
   if (WiFi.status() == WL_CONNECTED) {
     display.println("");
     display.println(WiFi.SSID());
@@ -84,6 +86,8 @@ void drawToDisplay() {
 void tryConnectWifi() {
     Serial.print("Connecting to ");
     Serial.println(ssid);
+    WiFi.mode(WIFI_STA);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
