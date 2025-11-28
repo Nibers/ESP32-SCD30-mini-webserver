@@ -1,7 +1,7 @@
 #include <Adafruit_SCD30.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ESP8266HTTPClient.h>
@@ -10,6 +10,7 @@
 
 WiFiServer server(80);
 String header;
+ESP8266WiFiMulti wifiMulti;
 
 // Time tracking variables
 unsigned long currentTime = millis();
@@ -71,7 +72,7 @@ void drawToDisplay() {
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
-  display.print("Temp: "); display.println(scd30.temperature);
+  display.print("Temp: "); display.println(scd30.temperature - 3.5f);
   display.print("Humi: "); display.println(scd30.relative_humidity);
   display.print("CO2: "); display.println(scd30.CO2);
 
@@ -84,19 +85,27 @@ void drawToDisplay() {
 }
 
 void tryConnectWifi() {
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-    WiFi.mode(WIFI_STA);
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Adding WiFi networks...");
+
+    for (int i = 0; i < WIFI_NETWORK_COUNT; i++) {
+        wifiMulti.addAP(WIFI_SSIDS[i], WIFI_PASSWORDS[i]);
+        Serial.print("  Added: ");
+        Serial.println(WIFI_SSIDS[i]);
+    }
+
+    Serial.println("Connecting...");
+    while (wifiMulti.run() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
     }
-    Serial.println("\nWiFi connected. IP address: ");
+
+    Serial.println("\nConnected to WiFi!");
+    Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+
     server.begin();
 }
+
 
 // Read sensor data
 void readSensor() {
@@ -107,7 +116,7 @@ void readSensor() {
         }
         co2 = scd30.CO2;
         humidity = scd30.relative_humidity;
-        temperature = scd30.temperature;
+        temperature = scd30.temperature - 3.5f;
     }
 }
 
@@ -139,7 +148,7 @@ void loop() {
         readSensor();
         printSensorToSerial();
         drawToDisplay();
-        if (WiFi.status() != WL_CONNECTED) {
+        if (wifiMulti.run() != WL_CONNECTED) {
             tryConnectWifi();
         }
     }
@@ -196,7 +205,7 @@ void serverLoop() {
                         client.print(" ppm, ");
 
                         client.print(" Temp: ");
-                        client.print(scd30.temperature, 1);
+                        client.print(scd30.temperature - 3.5f, 1);
                         client.print(" °C, ");
 
                         client.print(" Humidity: ");
