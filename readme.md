@@ -30,7 +30,7 @@ All of required code is in one file `ESP32-SCD30-mini-webserver.ino` , making th
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/esp32-scd30-webserver.git
+   git clone https://github.com/Nibers/ESP32-SCD30-mini-webserver.git
    ```
 2. Open the project in the **Arduino IDE**.
 
